@@ -26,20 +26,34 @@ class Replay:
 			#buffer.write(contents)
 			buffer.seek(0)
 
-			return cls(buffer)
+			return cls.fromBuffer(buffer)
 
-	def __init__(self, buffer):
-		self.buffer = buffer;
-
+	@classmethod
+	def fromBuffer(cls, buffer):
 		def skip(len):
 			buffer.seek(len, io.SEEK_CUR)
+
+		def skipToPattern(pattern):
+			i = 0
+			while True:
+				c = buffer.read(1)
+				if len(c) == 0: return
+
+				if c[0] == pattern[i]:
+					if i == len(pattern) - 1: #Match found!
+						return
+					else:
+						i += 1
+				else:
+					i = 0
+
 
 		def readAsciiString():
 			len = readInt()
 			return buffer.read(len).decode(encoding="ascii")
 
 		def readUtfString():
-			len = readInt()
+			len = readInt() * 2 # 2 bytes per utf-16 character
 			return buffer.read(len).decode(encoding="utf-16")
 
 		def readFloat():
@@ -49,15 +63,36 @@ class Replay:
 		def readInt():
 			return int.from_bytes(buffer.read(4), byteorder="little")
 
-		skip(0x108)
-		self.mapName = readAsciiString().rpartition("\\")[2]
+		skipToPattern(b"DATASDSC")
+		skip(0x30)
+		mapName = readAsciiString().rpartition("\\")[2]
+		#print("mapName: %s" % mapName)
 
-		skip(0xcf)
+		"""skip(0xcf)
 		#skip territory points (why are they there?)
 		while buffer.peek(0x8) != b"FOLDINFO":
 			print(readFloat()) # x-pos?
 			print(readFloat()) # y-pos?
 			print(readAsciiString())
+		"""
 
-		#self.mapName = self.readMapName(buffer)
+		skipToPattern(b"DATADATA")
+		skip(0x2b)
+		player1Name = readUtfString()
+		skip(0x4)
+		player1Faction = readAsciiString()
+		skip(0x8)
+		player1Loadout = readAsciiString()
+		skip(0xf2)
+		player2Name = readUtfString()
+		skip(0x4)
+		player2Faction = readAsciiString()
+		skip(0x8)
+		player2Loadout = readAsciiString()
 
+		return cls(buffer, mapName)
+
+
+	def __init__(self, buffer, mapName):
+		self.buffer = buffer
+		self.mapName = mapName
