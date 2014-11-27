@@ -1,10 +1,11 @@
 #from PyQt5.QtCore import (QFile, QIODevice)
+import io
 import Player
 
-class NotAReplayException(Exception):
-	pass
-
 class Replay:
+	class NotAReplayException(Exception):
+		pass
+
 	@staticmethod
 	def isCohReplay(buffer):
 		return buffer[0x4:0xc] == b"COH2_REC"
@@ -13,23 +14,50 @@ class Replay:
 	def readPlayers(buffer):
 		pass
 
-	@staticmethod
-	def readMapName(buffer):
-		len = int.from_bytes(buffer[0x108:0x10c], byteorder="big")
-		return buffer[0x10c:(0x10c+len)].decode(encoding="ascii")
-
 	@classmethod
 	def fromFile(cls, filepath):
-		with open(filepath, "rb") as file
-			buffer = file.read()
+		with open(filepath, "rb") as file:
+			contents = file.read()
 
-			if !isCohReplay(buffer)
+			if not cls.isCohReplay(contents):
 				raise NotAReplayException
 
-			return cls(bytearray(buffer))
+			buffer = io.BufferedRandom(io.BytesIO(contents))
+			#buffer.write(contents)
+			buffer.seek(0)
+
+			return cls(buffer)
 
 	def __init__(self, buffer):
 		self.buffer = buffer;
-		self.players = readPlayers(buffer)
-		self.mapName = readMapName(buffer)
+
+		def skip(len):
+			buffer.seek(len, io.SEEK_CUR)
+
+		def readAsciiString():
+			len = readInt()
+			return buffer.read(len).decode(encoding="ascii")
+
+		def readUtfString():
+			len = readInt()
+			return buffer.read(len).decode(encoding="utf-16")
+
+		def readFloat():
+			import struct
+			return struct.unpack_from("<f", buffer.read(4))[0]
+
+		def readInt():
+			return int.from_bytes(buffer.read(4), byteorder="little")
+
+		skip(0x108)
+		self.mapName = readAsciiString().rpartition("\\")[2]
+
+		skip(0xcf)
+		#skip territory points (why are they there?)
+		while buffer.peek(0x8) != b"FOLDINFO":
+			print(readFloat()) # x-pos?
+			print(readFloat()) # y-pos?
+			print(readAsciiString())
+
+		#self.mapName = self.readMapName(buffer)
 
