@@ -1,25 +1,34 @@
-from PyQt5.QtCore import (QFile, QFileSystemWatcher)
+from PyQt5.QtCore import (pyqtSignal, QObject, QFile, QFileSystemWatcher)
+from Replay import Replay
 
-class ReplayWatcher:
+class ReplayWatcher(QObject):
+
+	replayReady = pyqtSignal(Replay)
+
 	def __init__(self, replayDirectory):
+		QObject.__init__(self)
 		self.directory = replayDirectory
 		self._watcher = None
 
 	def start(self):
-		replayFilePath = self.directory + "/temp.rec"
 		watcher = QFileSystemWatcher()
 
-		if not watcher.addPath(replayFilePath):
-			raise Error
+		if not watcher.addPath(self.directory):
+			raise FileNotFoundError
 
-		watcher.fileChanged.connect(self._onFileChanged)
+		watcher.directoryChanged.connect(self._onDirectoryChanged)
+		print(watcher.directories())
 
 		self._watcher = watcher
 
 	def stop(self):
-		replayFilePath = self.directory + "/temp.rec"
-		self._watcher.removePath(replayFilePath)
+		self._watcher.removePath(self.directory)
 		self._watcher = None
 
-	def _onFileChanged(self, filepath):
-		file = FileIO(filepath)
+	def _onDirectoryChanged(self, filepath):
+		try:
+			replay = Replay.fromFile(filepath)
+			self.replayReady.emit(replay)
+		except:
+			#TODO: Logging
+			pass
