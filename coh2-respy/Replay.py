@@ -145,8 +145,6 @@ class Replay:
 				for i in range(playerCount):
 					players.append(parsePlayer())
 
-				#Read players
-
 				skip(90)
 				winCondition = readAsciiString()
 
@@ -195,7 +193,10 @@ class Replay:
 
 		def parseTick():
 			skip(4)
-			if buffer.tell() > len(buffer): return False
+			if len(buffer.read(1)) == 0:
+				return False
+			else:
+				skip(-1)
 
 			tickSize = readUInt32()
 			skip(tickSize)
