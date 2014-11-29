@@ -1,7 +1,7 @@
-#from PyQt5.QtCore import (QFile, QIODevice)
 import io
-from Player import Player
 import dateutil.parser
+import pdb
+from Player import Player
 
 class InvalidVersionException(Exception):
 	def __init__(self): self.message = "Replays prior to version 3.0.0.10242 cannot be parsed!";
@@ -100,6 +100,16 @@ class Replay:
 			return True
 
 		def parseChunk():
+			nonlocal modName
+			nonlocal mapFile
+			nonlocal mapName
+			nonlocal mapWidth
+			nonlocal mapHeight
+			nonlocal mapSeason
+			nonlocal playerCount
+			nonlocal players
+			nonlocal winCondition
+
 			chunkType = readAsciiString(8)
 			if not chunkType[0:4] in ("FOLD", "DATA"):
 				skip(-8)
@@ -116,12 +126,14 @@ class Replay:
 				while buffer.tell() < startIndex + chunkLength:
 					parseChunk()
 
-			if chunkType == "DATASDSC" and chunkVersion == 0x7de:
+			if chunkType == "DATASDSC" and chunkVersion == 0x7e3:
 				skip(16)
-				skip(12 + 2 * readUInt32())
+				skip(12)#)+ 2 * readUInt32())
 
 				modName = readAsciiString()
 				mapFile = readAsciiString()
+				pdb.set_trace()
+
 
 				skip(16)
 
@@ -192,6 +204,8 @@ class Replay:
 			while parseTick(): pass
 
 		def parseTick():
+			nonlocal gameDuration
+
 			skip(4)
 			if len(buffer.read(1)) == 0:
 				return False
@@ -200,6 +214,7 @@ class Replay:
 
 			tickSize = readUInt32()
 			skip(tickSize)
+
 			gameDuration += 1
 
 			return True
@@ -217,8 +232,7 @@ class Replay:
 		#mapName = readAsciiString().rpartition("\\")[2]
 		#print("mapName: %s" % mapName)
 
-		skip(0x4c)
-
+		skip(0x1e)
 		parseChunky()
 		parseChunky()
 
@@ -233,7 +247,7 @@ class Replay:
 		"""
 
 
-		return cls(buffer, version, mapName, time)
+		return cls(buffer, version, gameType, modName, mapFile, mapName, mapDescription, mapWidth, mapHeight, mapSeason, playerCount, players, winCondition, gameDuration)
 
 
 	def __init__(self, buffer, version, gameType, modName, mapFile, mapName, mapDescription, mapWidth, mapHeight, mapSeason, playerCount, players, winCondition, gameDuration):
