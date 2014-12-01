@@ -153,7 +153,7 @@ class Replay:
 
 				#mapSeason = readAsciiString()
 
-			if chunkType == "DATADATA" and chunkVersion == 0x17:
+			if chunkType == "DATADATA" and chunkVersion == 0x17 and False: #TODO
 				skip(18)
 
 				playerCount = readUInt32()
@@ -177,6 +177,8 @@ class Replay:
 
 			loadout = readAsciiString() #Is it loadout? "default" in file
 
+			# TODO Find the damn index of SteamID
+			
 			skip(0x50)
 
 			steamId = readUInt64()
@@ -244,7 +246,8 @@ class Replay:
 		if gameType != "COH2_REC":
 			raise InvalidFileException
 
-		time = dateutil.parser.parse(readUtfZString())
+		gameTimeIndex = buffer.tell()
+		gameTime = dateutil.parser.parse(readUtfZString())
 
 		#skipToPattern(b"DATASDSC")
 		#skip(0x30)
@@ -266,13 +269,15 @@ class Replay:
 		"""
 
 
-		return cls(buffer, version, gameType, modName, mapFile, mapName, mapDescription, mapWidth, mapHeight, mapSeason, playerCount, players, winCondition, gameDuration)
+		return cls(buffer, version, gameType, gameTimeIndex, gameTime, modName, mapFile, mapName, mapDescription, mapWidth, mapHeight, mapSeason, playerCount, players, winCondition, gameDuration)
 
 
-	def __init__(self, buffer, version, gameType, modName, mapFile, mapName, mapDescription, mapWidth, mapHeight, mapSeason, playerCount, players, winCondition, gameDuration):
+	def __init__(self, buffer, version, gameType, gameTimeIndex, gameTime, modName, mapFile, mapName, mapDescription, mapWidth, mapHeight, mapSeason, playerCount, players, winCondition, gameDuration):
 		self.buffer 		= buffer
 		self.version 		= version 		
-		self.gameType 		= gameType 		
+		self.gameType 		= gameType
+		self.gameTimeIndex	= gameTimeIndex
+		self.gameTime		= gameTime
 		self.modName 		= modName 		
 		self.mapFile 		= mapFile 		
 		self.mapName 		= mapName 		
@@ -284,3 +289,14 @@ class Replay:
 		self.players 		= players 		
 		self.winCondition 	= winCondition 
 		self.gameDuration 	= gameDuration 
+
+	def convertGameTimeToIsoFormat(self):
+		buffer = self.buffer
+		timeIndex = self.gameTimeIndex
+		strIndex = timeIndex + 4
+
+		isoTimeStr = self.gameTime.isoformat(sep = ' ')
+		oldStrLen = int.from_bytes(buffer[timeIndex:strIndex], byteorder="little", signed=False)
+
+		buffer[timeIndex:strIndex] = len(isoTimeStr).to_bytes(4, byteorder="little", signed=False)
+		buffer[strIndex:strIndex + oldStrLen * 2] = isoTimeStr.encode(encoding="utf-16")
