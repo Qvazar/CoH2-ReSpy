@@ -3,8 +3,8 @@ import dateutil.parser
 import pdb
 from Player import Player
 
-class InvalidVersionException(Exception):
-	def __init__(self): self.message = "Replays prior to version 3.0.0.10242 cannot be parsed!";
+class InvalidFileException(Exception):
+	def __init__(self): self.message = "File does not seem to be a CoH2 replay.";
 
 class Replay:
 
@@ -86,7 +86,8 @@ class Replay:
 			return int.from_bytes(buffer.read(8), byteorder="little", signed=False)
 
 		def parseChunky():
-			if buffer.read(12) != b"Relic Chunky": return False
+			if buffer.read(12) != b"Relic Chunky":
+				raise InvalidFileException
 
 			skip(0x4)
 
@@ -103,6 +104,7 @@ class Replay:
 			nonlocal modName
 			nonlocal mapFile
 			nonlocal mapName
+			nonlocal mapDescription
 			nonlocal mapWidth
 			nonlocal mapHeight
 			nonlocal mapSeason
@@ -127,13 +129,12 @@ class Replay:
 					parseChunk()
 
 			if chunkType == "DATASDSC" and chunkVersion == 0x7e3:
-				skip(16)
-				skip(12)#)+ 2 * readUInt32())
+				skip(12)
+				skip(6 + 2 * readUInt32())
 
-				modName = readAsciiString()
+				#Not visible in this version
+				#modName = readAsciiString()
 				mapFile = readAsciiString()
-				pdb.set_trace()
-
 
 				skip(16)
 
@@ -141,17 +142,19 @@ class Replay:
 
 				skip(4)
 
+				mapDescription = readUtfString()
+
+				skip(4)
+
 				mapWidth = readUInt32()
 				mapHeight = readUInt32()
 
-				skip(47)
+				#skip(47)
 
-				if readUInt32() > 0:
-					skip(-4)
-					mapSeason = readAsciiString()
+				#mapSeason = readAsciiString()
 
-			if chunkType == "DATADATA" and chunkVersion == 0x8:
-				skip(29)
+			if chunkType == "DATADATA" and chunkVersion == 0x17:
+				skip(18)
 
 				playerCount = readUInt32()
 				for i in range(playerCount):
@@ -168,11 +171,15 @@ class Replay:
 
 			playerName = readUtfString()
 			teamId = readUInt32()
-			factionId = readUInt32()
+			factionId = readAsciiString()
 
-			skip(41)
+			skip(8)
 
-			steamId = readUint64()
+			loadout = readAsciiString() #Is it loadout? "default" in file
+
+			skip(0x50)
+
+			steamId = readUInt64()
 
 			skip(4)
 
@@ -186,9 +193,19 @@ class Replay:
 			bulletinIds = []
 
 			for i in range(3):
-				bulletinIds.append(readUInt32())
+				bulletinId = readUInt32()
+				if bulletinId !=0xffffffff:
+					bulletinIds.append(bulletinId)
 
 			skip(4)
+
+			print(playerName)
+			print(teamId)
+			print(factionId)
+			print(loadout)
+			print(steamId)
+			print(commanderIds)
+			print(bulletinIds)
 
 			bulletins = []
 
@@ -213,17 +230,19 @@ class Replay:
 				skip(-1)
 
 			tickSize = readUInt32()
-			skip(tickSize)
-
-			gameDuration += 1
-
-			return True
+			if tickSize:
+				skip(tickSize)
+				gameDuration += 1
+				return True
+			else:
+				return False
 
 		skip(0x2)
 		version = readUInt16()
-		if version == 0: raise InvalidVersionException
 
 		gameType = readAsciiString(8)
+		if gameType != "COH2_REC":
+			raise InvalidFileException
 
 		time = dateutil.parser.parse(readUtfZString())
 
@@ -232,7 +251,7 @@ class Replay:
 		#mapName = readAsciiString().rpartition("\\")[2]
 		#print("mapName: %s" % mapName)
 
-		skip(0x1e)
+		buffer.seek(0x4c, io.SEEK_SET)
 		parseChunky()
 		parseChunky()
 

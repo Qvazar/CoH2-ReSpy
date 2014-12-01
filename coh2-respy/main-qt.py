@@ -9,7 +9,7 @@ if __name__ == '__main__':
 	
 	app = QApplication(sys.argv)
 
-	watcher = ReplayWatcher("/home/sj/Code/CoH2-ReSpy/test/coh2-respy/data/")
+	watcher = ReplayWatcher("/home/sj/Code/CoH2-ReSpy/coh2-respy/test/data/")
 	watcher.replayReady.connect(onReplayReady)
 	watcher.start()
 

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Tasks SYSTEM "Tasks-5.1.dtd">
+<!-- eric5 tasks file for project CoH2-ReSpy -->
+<!-- Saved: 2014-11-29, 17:36:49 -->
+<Tasks version="5.1">
+  <ProjectScanFilter></ProjectScanFilter>
+  <Task priority="1" completed="False" type="1">
+    <Summary>TODO: Logging</Summary>
+    <Description></Description>
+    <Created>2014-11-29, 17:36:46</Created>
+    <Resource>
+      <Filename>coh2-respy/ReplayWatcher.py</Filename>
+      <Linenumber>46</Linenumber>
+    </Resource>
+  </Task>
+</Tasks>
